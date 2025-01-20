@@ -1,6 +1,6 @@
-use crate::vec::Point3;
-use crate::ray::Ray;
 use crate::hittable::*;
+use crate::ray::Ray;
+use crate::vec::Point3;
 use std::ops::Range;
 
 #[derive(Clone, Copy, Debug)]
@@ -15,13 +15,14 @@ impl Hittable for Sphere {
 
         let a = r.dir.len_square();
         let h = r.dir.dot(oc);
-        let c = oc.len_square() - self.radius*self.radius;
-        let discriminant = h*h - a*c;
+        let c = oc.len_square() - self.radius * self.radius;
+        let discriminant = h * h - a * c;
 
-        let sqrt_disc = discriminant.sqrt();
-        if sqrt_disc.is_nan() {
+        let sqrt_disc = if discriminant >= 0.0 {
+            discriminant.sqrt()
+        } else {
             return None;
-        }
+        };
 
         let root = (h - sqrt_disc) / a;
 

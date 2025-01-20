@@ -10,7 +10,11 @@ pub struct Color {
 
 impl Color {
     pub const fn new() -> Self {
-        Self { r: 0.0, g: 0.0, b: 0.0 }
+        Self {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+        }
     }
 
     fn _to_rgb16(x: f32) -> [u8; 2] {
@@ -39,11 +43,7 @@ impl Color {
     }
 
     pub fn to_vec3(self) -> Vec3 {
-        Vec3([
-            self.r,
-            self.g,
-            self.b,
-        ])
+        Vec3([self.r, self.g, self.b])
     }
 
     pub fn from_vec3(v: Vec3) -> Self {
