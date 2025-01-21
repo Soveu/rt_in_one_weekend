@@ -1,5 +1,6 @@
 use png;
 use std::error::Error;
+use std::ops::Range;
 
 mod color;
 mod hittable;
@@ -79,8 +80,34 @@ fn ray_color(ray: &Ray, world: &world::World) -> Color {
     );
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn xorshift(mut x: u32) -> u32 {
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    return x;
+}
+
+fn unit_f32_from_u32(x: u32) -> f32 {
+    let max = (u32::MAX as f64) + 1.0;
+    return ((x as f64) / max) as f32;
+}
+
+fn f32_from_u32(x: u32, r: Range<f32>) -> f32 {
+    r.start + (r.end - r.start) * unit_f32_from_u32(x)
+}
+
+fn sample_square(seed: u32) -> (u32, [f32; 2]) {
+    let seed = xorshift(seed);
+    let x = unit_f32_from_u32(seed);
+    let seed = xorshift(seed);
+    let y = unit_f32_from_u32(seed);
+    return (seed, [x, y]);
+}
+
+fn render(world: &World) -> Image {
+    const SAMPLES_PER_PIXEL: u16 = 100;
     let mut img = ZEROED_IMAGE;
+    let mut rng_seed = 0xDEADBEEFu32;
 
     let focal_length = 1.0;
     let camera_center: Point3 = Vec3([0.0, 0.0, 0.0]);
@@ -94,6 +121,34 @@ fn main() -> Result<(), Box<dyn Error>> {
         .sub(viewport_v.mul_scalar(0.5));
     let pixel00_loc = viewport_upper_left.add(pixel_delta_u.add(pixel_delta_v).mul_scalar(0.5));
 
+    for h in 0..IMG_HEIGHT {
+        for w in 0..IMG_WIDTH {
+            for isample in 0..SAMPLES_PER_PIXEL {
+                let (out_seed, [x, y]) = sample_square(rng_seed);
+                rng_seed = out_seed;
+
+                let sample = pixel00_loc
+                    .add(pixel_delta_u.mul_scalar(w as f32 + x))
+                    .add(pixel_delta_v.mul_scalar(h as f32 + y));
+                let ray_direction = sample.sub(camera_center);
+
+                let r = Ray {
+                    orig: camera_center,
+                    dir: ray_direction,
+                };
+
+                let color_info = ray_color(&r, &world)
+                    .to_vec3()
+                    .mul_scalar(1.0 / (SAMPLES_PER_PIXEL as f32));
+                img[h][w] = Color::from_vec3(img[h][w].to_vec3().add(color_info));
+            }
+        }
+    }
+
+    return img;
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
     let world = World {
         spheres: vec![
             Sphere {
@@ -107,21 +162,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ],
     };
 
-    for h in 0..IMG_HEIGHT {
-        for w in 0..IMG_WIDTH {
-            let pixel_center = pixel00_loc
-                .add(pixel_delta_u.mul_scalar(w as f32))
-                .add(pixel_delta_v.mul_scalar(h as f32));
-            let ray_direction = pixel_center.sub(camera_center);
-
-            let r = Ray {
-                orig: camera_center,
-                dir: ray_direction,
-            };
-            img[h][w] = ray_color(&r, &world);
-        }
-    }
-
+    let img = render(&world);
     dump_to_png(&img)?;
 
     Ok(())

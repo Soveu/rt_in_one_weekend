@@ -18,7 +18,7 @@ impl Color {
     }
 
     fn _to_rgb16(x: f32) -> [u8; 2] {
-        ((x * 65535.0).floor() as u16).to_be_bytes()
+        ((x.clamp(0.0, 0.9999) * 65536.0).floor() as u16).to_be_bytes()
     }
 
     pub fn to_rgb16(self) -> [u8; 6] {
@@ -30,7 +30,7 @@ impl Color {
     }
 
     fn _to_rgb8(x: f32) -> u8 {
-        (x * 255.0).floor() as u8
+        (x.clamp(0.0, 0.9999) * 256.0).floor() as u8
     }
 
     #[allow(dead_code)]
